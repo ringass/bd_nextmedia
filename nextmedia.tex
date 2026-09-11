@@ -1,0 +1,729 @@
+\documentclass[a4paper,12pt,oneside,openany]{book}
+
+% ============================================================================
+% PROJETO FINAL - BANCO DE DADOS I
+% UNESP - Faculdade de Ciencias - Bauru - Departamento de Computacao
+% Prof. Bruno Elias Penteado
+%
+% Projeto: NextMedia - plataforma de streaming de video por assinatura
+%
+% ENTREGAVEIS PEDIDOS PELO PROFESSOR (orientacao complementar):
+%   Grupo de 4 pessoas | cenario escolhido pelo grupo | 10 a 15 entidades
+%   Documento PDF contendo:
+%   1) Modelagem conceitual: descricao BREVE do minimundo, regras de negocio,
+%      diagrama DER
+%   2) Modelagem logica: aplicando conceitos de normalizacao, DER logico
+%   3) Modelagem fisica: codigo SQL para PostgreSQL, contendo comandos DDL e
+%      DML para criacao do banco e carga de dados iniciais de exemplo,
+%      + 3 SELECTs que exemplifiquem a utilidade no minimundo
+%
+% COMO USAR:
+% 1) Substituam os blocos \orientacao{...} pelo texto final.
+% 2) Todo diagrama precisa ser citado e explicado no corpo do texto.
+% 3) Antes da entrega, troquem \orientacoestrue por \orientacoesfalse.
+% ============================================================================
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{natbib}
+\usepackage{fancyhdr}
+\usepackage{needspace}
+\usepackage{indentfirst}
+\usepackage[top=2cm,bottom=2cm,left=2cm,right=2cm]{geometry}
+
+\hypersetup{
+    hidelinks,
+    pdftitle={NextMedia -- Projeto de Banco de Dados},
+    pdfauthor={Equipe NextMedia}
+}
+
+\urlstyle{same}
+
+% ----------------------------------------------------------------------------
+% Listagens de codigo SQL
+% ----------------------------------------------------------------------------
+% Usamos o pacote "listings". NAO carregar "minted" junto: minted exige
+% compilacao com -shell-escape e Pygments instalado, o que quebra o build
+% para quem usa Overleaf/TeXstudio sem configuracao extra.
+\definecolor{corComentario}{rgb}{0.35,0.45,0.35}
+\definecolor{corPalavra}{rgb}{0.10,0.20,0.55}
+\definecolor{corTexto}{rgb}{0.55,0.20,0.15}
+\definecolor{corFundo}{rgb}{0.97,0.97,0.97}
+
+\lstdefinestyle{sqlstyle}{
+    language=SQL,
+    morekeywords={SCHEMA,SERIAL,BIGSERIAL,TIMESTAMP,BOOLEAN,TEXT,VARCHAR,
+                  NUMERIC,INTEGER,SMALLINT,DATE,INTERVAL,REFERENCES,CASCADE,
+                  RESTRICT,DEFAULT,CONSTRAINT,UNIQUE,CHECK,PRIMARY,FOREIGN,
+                  KEY,NOT,NULL,ON,DELETE,UPDATE,TRIGGER,FUNCTION,RETURNS,
+                  LANGUAGE,PLPGSQL,BEGIN,END,IF,THEN,RAISE,EXCEPTION},
+    basicstyle=\ttfamily\footnotesize,
+    keywordstyle=\color{corPalavra}\bfseries,
+    commentstyle=\color{corComentario}\itshape,
+    stringstyle=\color{corTexto},
+    backgroundcolor=\color{corFundo},
+    frame=single,
+    rulecolor=\color{gray},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    numbersep=8pt,
+    breaklines=true,
+    showstringspaces=false,
+    tabsize=2,
+    captionpos=b,
+    extendedchars=true,
+    inputencoding=utf8,
+    literate=%
+      {á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1
+      {â}{{\^a}}1 {ê}{{\^e}}1 {ô}{{\^o}}1 {ã}{{\~a}}1 {õ}{{\~o}}1
+      {ç}{{\c c}}1 {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1
+      {Ú}{{\'U}}1 {Â}{{\^A}}1 {Ê}{{\^E}}1 {Ô}{{\^O}}1 {Ã}{{\~A}}1
+      {Õ}{{\~O}}1 {Ç}{{\c C}}1
+}
+\lstset{style=sqlstyle}
+\renewcommand{\lstlistingname}{Listagem}
+\renewcommand{\lstlistlistingname}{Lista de listagens}
+
+% Atalho para nomes de tabelas e colunas
+\newcommand{\bd}[1]{\texttt{#1}}
+
+% ----------------------------------------------------------------------------
+% Exibicao das orientacoes do modelo
+% ----------------------------------------------------------------------------
+% Troquem para \orientacoesfalse antes de gerar a versao final para entrega.
+\newif\iforientacoes
+\orientacoestrue
+
+\newcommand{\orientacao}[1]{%
+    \iforientacoes
+        \begin{quote}
+        \small\itshape\textbf{A escrever:} #1
+        \end{quote}
+    \fi
+}
+
+% Marca quem ficou responsavel pela secao (some junto com as orientacoes)
+\newcommand{\autoria}[1]{%
+    \iforientacoes
+        \marginpar{\scriptsize\textsf{#1}}%
+    \fi
+}
+
+% ----------------------------------------------------------------------------
+% Capitulos em fluxo continuo
+% ----------------------------------------------------------------------------
+% A classe "book" comeca cada capitulo numa pagina nova, o que deixa muita
+% pagina pela metade num documento curto como este. As redefinicoes abaixo
+% removem essa quebra: o capitulo segue logo apos o texto anterior. O
+% \Needspace evita que um titulo fique sozinho no pe da pagina.
+% Para voltar ao comportamento padrao da classe, basta apagar este bloco.
+\makeatletter
+\renewcommand\chapter{%
+    \par
+    \Needspace*{5\baselineskip}%
+    \thispagestyle{fancy}%
+    \global\@topnum\z@
+    \@afterindentfalse
+    \secdef\@chapter\@schapter}
+\renewcommand\@makechapterhead[1]{%
+    \vspace*{1.2\baselineskip}%
+    {\parindent\z@ \raggedright \normalfont
+     \interlinepenalty\@M
+     \large\bfseries \@chapapp\space \thechapter
+     \par\nobreak
+     \vskip 6\p@
+     \LARGE\bfseries #1\par\nobreak
+     \vskip 16\p@
+    }}
+\renewcommand\@makeschapterhead[1]{%
+    \vspace*{1.2\baselineskip}%
+    {\parindent\z@ \raggedright \normalfont
+     \interlinepenalty\@M
+     \LARGE\bfseries #1\par\nobreak
+     \vskip 16\p@
+    }}
+\makeatother
+
+% ----------------------------------------------------------------------------
+% Cabecalho e rodape
+% ----------------------------------------------------------------------------
+\renewcommand{\headrulewidth}{0pt}
+\fancyhf{}
+
+% ----------------------------------------------------------------------------
+% Informacoes do trabalho -- ATUALIZAR NOMES E RAs
+% ----------------------------------------------------------------------------
+\newcommand{\school}{Universidade Estadual Paulista ``Júlio de Mesquita Filho'' (UNESP)\\
+Faculdade de Ciências -- Bauru\\
+Departamento de Computação}
+\newcommand{\discipline}{Banco de Dados I}
+\newcommand{\professorname}{Prof. Dr. Bruno Elias Penteado}
+\newcommand{\projtitle}{NextMedia}
+\newcommand{\projsubtitle}{Projeto de banco de dados para uma plataforma de \textit{streaming} de vídeo por assinatura}
+\newcommand{\semester}{2026}
+
+% ----------------------------------------------------------------------------
+% Paragrafos
+% ----------------------------------------------------------------------------
+% Recuo de 1,25 cm na primeira linha, como manda o uso brasileiro (e a ABNT).
+% O pacote indentfirst, carregado acima, garante que o primeiro paragrafo
+% depois de um titulo tambem seja recuado -- por padrao o LaTeX nao recua.
+\setlength{\parindent}{1.25cm}
+\setlength{\parskip}{0pt}
+
+\graphicspath{{images/}}
+
+\title{NextMedia -- Projeto de Banco de Dados}
+\author{Equipe NextMedia}
+
+\begin{document}
+
+% ============================================================================
+% CAPA
+% ============================================================================
+\thispagestyle{empty}
+\begin{titlepage}
+	\centering
+
+	% Logotipo da UNESP no topo da página
+	\vspace*{-12mm}
+	\includegraphics[width=75mm]{AV01A.jpg}\\[8mm]
+
+	{\large\textbf{\school}}
+
+	\vfill
+
+	{\huge\textbf{\projtitle}}\\[5mm]
+	{\Large\projsubtitle}
+
+	\vfill
+
+	{\Large\textbf{\discipline}}\\[4mm]
+	{\large\professorname}\\[14mm]
+
+	%{\large\textbf{Estudantes}}\\[4mm]
+	Caio César Souza Oliveira -- RA: 241025702 \\[2mm]
+	Mário Masao Mukai -- RA: 241022321 \\[2mm]
+	Murilo Tomaz Gonzaga -- RA: 241024684 \\[2mm]
+
+	\vfill
+
+	{\large Bauru -- SP\\\semester}
+\end{titlepage}
+
+\tableofcontents
+\thispagestyle{empty}
+
+\clearpage
+\pagestyle{fancy}
+\cfoot{\thepage}
+\setcounter{page}{1}
+
+% ============================================================================
+\chapter{Introdução}\label{cap:introducao}
+% ============================================================================
+
+\section{Contexto}
+
+A NextMedia é uma plataforma de \textit{streaming} de vídeo por assinatura.
+O cliente cria uma conta, escolhe um plano e passa a assistir a um catálogo de
+filmes e séries, em tantos dispositivos quantos o plano permitir. É um serviço
+que a maioria das pessoas já usou, e foi por isso que o escolhemos: não é
+preciso gastar páginas explicando o negócio antes de começar a modelá-lo.
+
+Pesou também o fato de o domínio pedir, sem artifício, boa parte dos recursos
+do modelo entidade-relacionamento. Um título é sempre um filme ou uma série,
+nunca os dois, o que produz uma especialização total e exclusiva. Temporadas
+e episódios não existem soltos, fora da série a que pertencem, e portanto são
+entidades fracas. Gêneros se organizam em hierarquia e um título pode ser continuação de
+outro, dois auto-relacionamentos. A participação de uma pessoa em um título,
+seja como ator, diretor ou roteirista, é um relacionamento N:N que carrega
+atributos próprios. Há ainda o histórico da plataforma, feito de assinaturas
+encerradas e visualizações antigas, que traz o problema de preservar dados
+corretos mesmo quando o catálogo e os preços mudam.
+
+\section{Objetivo e escopo}
+
+O objetivo do trabalho é projetar o banco de dados dessa plataforma passando
+pelos três níveis de abstração usuais \citep{elmasri2019}: o conceitual, que
+independe de tecnologia; o lógico, já traduzido para o modelo relacional e
+normalizado; e o físico, que é um script de criação do esquema.
+Usamos o PostgreSQL como sistema gerenciador, e o DER lógico foi
+construído no ERD Tool, a ferramenta CASE integrada ao pgAdmin.
+% TODO: completar com a ferramenta usada no DER assim que o grupo decidir.
+
+O escopo cobre contas, planos e assinaturas, os perfis que convivem dentro de
+uma mesma conta, o catálogo de títulos com suas temporadas, episódios e
+gêneros, o elenco e a equipe técnica de cada obra, e o histórico de
+visualizações de cada perfil. Ficam de fora o processamento de pagamentos, a
+infraestrutura de entrega de vídeo, os algoritmos de recomendação e a camada de
+aplicação, que pertencem à plataforma real mas não ao problema de projeto de
+esquema que a disciplina propõe.
+
+\section{Organização do documento}
+
+Os três capítulos seguintes correspondem aos três níveis. O
+Capítulo~\ref{cap:conceitual} descreve o minimundo, enuncia as regras de
+negócio e apresenta o diagrama entidade-relacionamento. O
+Capítulo~\ref{cap:logico} traz o modelo lógico normalizado e justifica as
+decisões de mapeamento que o diagrama sozinho não explica. O
+Capítulo~\ref{cap:fisico} trata da implementação no PostgreSQL e mostra qual
+mecanismo garante cada regra de negócio.
+
+% TODO: registrar aqui, em uma frase, a divisão de autoria entre os integrantes.
+
+% ============================================================================
+\chapter{Modelo Conceitual}\label{cap:conceitual}
+% ============================================================================
+
+\section{O minimundo}\label{sec:minimundo}
+
+% ---------------------------------------------------------------------------
+% ESBOCO -- primeira versao, a revisar pelo grupo.
+% Checklist da secao: (i) conta, plano e assinatura, incluindo a troca de
+% plano; (ii) perfis e a restricao do perfil infantil; (iii) catalogo, com
+% filmes, series, temporadas, episodios, generos e franquias; (iv) pessoas e
+% participacoes; (v) visualizacoes. O texto deve falar a lingua do negocio,
+% deixando o vocabulario de modelagem para as secoes seguintes.
+% ---------------------------------------------------------------------------
+
+A NextMedia vende acesso a um catálogo de vídeo. O cliente abre uma conta,
+identificada por um \textit{e-mail} único na plataforma, e contrata um plano,
+que define preço mensal, telas simultâneas, número de perfis e qualidade. O
+vínculo entre os dois é a assinatura, que guarda o período e o valor cobrado
+--- registrado ali porque os planos mudam de preço. Na troca de plano, a
+assinatura anterior é encerrada com data de término e uma nova é aberta, e só
+uma vale por vez. Dentro da conta convivem vários perfis, um por pessoa da
+casa, cada um com nome, avatar, idioma e histórico próprios; um perfil
+infantil só enxerga títulos de classificação até doze anos, e o número de
+perfis esbarra no limite do plano.
+
+A unidade do catálogo é o título, com nome, ano, sinopse, idioma original e
+classificação indicativa. Todo título é um filme \emph{ou} uma série: o filme
+tem duração e se assiste de uma vez; a série desdobra-se em temporadas, e cada
+temporada em episódios, que não existem fora da obra a que pertencem. Todo
+título tem ao menos um gênero, e os gêneros formam hierarquia, já que ficção
+científica é recorte de uma categoria maior. Um título também pode apontar
+para o que lhe deu origem, ligando continuações e franquias.
+
+Atores, diretores e roteiristas são registrados uma única vez, com nome e data
+de nascimento. Como a mesma pessoa pode dirigir e atuar no mesmo título, o que
+se registra é a participação: quem, em que obra, fazendo o quê, interpretando
+qual personagem e em que posição nos créditos. Já o histórico de consumo é o
+que a plataforma mais acumula: cada \textit{play} guarda qual perfil assistiu,
+o quê, quando, por quanto tempo, em que dispositivo e se chegou ao fim,
+apontando sempre para um filme ou um episódio, nunca para ambos. Daí também
+duas decisões de retenção: um título que sai do catálogo recebe data de saída
+e permanece no banco, para que as visualizações antigas continuem fazendo
+sentido; a conta encerrada leva junto perfis e histórico.
+
+O relato se traduz em treze entidades, agrupadas em quatro núcleos ---
+assinatura, catálogo, pessoas e consumo:
+
+\begin{itemize}[label=--, leftmargin=*, itemsep=2pt]
+  \item \textbf{conta} --- assinante da plataforma; dados de acesso e cobrança.
+  \item \textbf{plano} --- catálogo de planos comercializados.
+  \item \textbf{assinatura} --- vínculo entre conta e plano, com período de vigência e valor cobrado.
+  \item \textbf{perfil} --- subusuário dentro de uma conta.
+  \item \textbf{titulo} --- unidade do catálogo; aponta para o título que lhe deu origem.
+  \item \textbf{filme} --- título que se assiste de uma vez, com duração própria.
+  \item \textbf{serie} --- título que se desdobra em temporadas.
+  \item \textbf{temporada} --- depende de uma série para existir.
+  \item \textbf{episodio} --- depende de uma temporada para existir.
+  \item \textbf{genero} --- categoria do catálogo, podendo ter um gênero que a contém.
+  \item \textbf{pessoa} --- elenco e equipe técnica.
+  \item \textbf{participacao} --- atuação de uma pessoa em um título, com papel e personagem.
+  \item \textbf{visualizacao} --- registro de que um perfil assistiu a um filme ou episódio.
+\end{itemize}
+
+A associação entre títulos e gêneros não entra nessa contagem: vira tabela
+própria no modelo lógico, já que um título tem vários gêneros e um gênero reúne
+vários títulos, mas é só o relacionamento entre duas entidades já listadas, sem
+informação própria para guardar. Os atributos de cada entidade aparecem no
+diagrama da Seção~\ref{sec:der} e no modelo lógico do
+Capítulo~\ref{cap:logico}.
+
+\section{Regras de negócio}\label{sec:regras}
+
+% ---------------------------------------------------------------------------
+% ESBOCO -- primeira versao, a revisar pelo grupo.
+% ---------------------------------------------------------------------------
+
+As regras a seguir saem da leitura do minimundo descrito na
+Seção~\ref{sec:minimundo}. Elas justificam escolhas do diagrama que de outro
+modo pareceriam arbitrárias e, principalmente, funcionam como lista de
+verificação para o modelo físico: no Capítulo~\ref{cap:fisico} cada uma
+reaparece ao lado do mecanismo que a faz valer. A numeração é fixa e usada como referência ao longo do
+texto.\footnote{A sequência salta de RN13 para RN17 porque as regras RN14 a
+RN16 tratavam de avaliações e listas pessoais, funcionalidades que ficaram
+fora do escopo. Preferimos preservar a numeração das demais a renumerar tudo.}
+
+\begin{longtable}{@{}p{0.09\textwidth} p{0.85\textwidth}@{}}
+\caption{Regras de negócio da NextMedia.}\label{tab:regras}\\
+\toprule
+\textbf{Código} & \textbf{Regra} \\
+\midrule
+\endfirsthead
+\multicolumn{2}{@{}l}{\small\itshape Tabela \thetable{} -- continuação}\\
+\toprule
+\textbf{Código} & \textbf{Regra} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{2}{r@{}}{\small\itshape continua na próxima página}\\
+\endfoot
+\bottomrule
+\endlastfoot
+RN01 & O endereço de \textit{e-mail} de uma conta é único em toda a plataforma. \\
+RN02 & Uma conta possui, no máximo, uma assinatura ativa por vez. \\
+RN03 & O número de perfis de uma conta não excede o \bd{max\_perfis} do plano vigente. \\
+RN04 & Um perfil pertence a exatamente uma conta e não pode ser transferido. \\
+RN05 & Um perfil infantil só acessa títulos com classificação indicativa menor ou igual a 12 anos. \\
+RN06 & Todo título é um filme \textbf{ou} uma série: a especialização é total e exclusiva. \\
+RN07 & Uma temporada só existe vinculada a uma série; um episódio, apenas a uma temporada. \\
+RN08 & O número da temporada é único dentro da série; o número do episódio é único dentro da temporada. \\
+RN09 & Todo título possui ao menos um gênero associado. \\
+RN10 & Um gênero pode ter um gênero-pai; a hierarquia não admite ciclos. \\
+RN11 & A combinação (título, pessoa, papel) é única. \\
+RN12 & Uma visualização refere-se a um filme \textbf{ou} a um episódio, nunca a ambos. \\
+RN13 & O tempo assistido não excede a duração do conteúdo visualizado. \\
+RN17 & A exclusão de uma conta propaga-se em cascata para seus perfis e seu histórico. \\
+RN18 & Um título retirado do catálogo recebe data de saída e não é removido fisicamente. \\
+\end{longtable}
+
+Nem toda regra custa o mesmo para ser garantida. Algumas o próprio desenho do
+modelo torna impossíveis de violar: RN04 e RN07 dispensam verificação, porque
+um perfil só existe pendurado numa conta e uma temporada numa série. Outras se
+resolvem com uma restrição declarada na criação da tabela --- RN01 e RN08 são
+unicidade, RN11 vira a chave primária composta de \bd{participacao}, RN12 e
+RN13 são verificações sobre a própria linha, e RN17 é a ação de propagação da
+chave estrangeira. Em ambos os casos o banco cuida sozinho, por qualquer
+caminho de escrita.
+
+O grupo problemático é outro: RN02, RN03, RN09 e RN10 dependem de informação
+que não está na linha gravada --- as demais assinaturas da conta, o plano a
+duas tabelas de distância, um vínculo criado só depois do título, ou a árvore
+inteira de gêneros. RN05, por fim, é de outra natureza: diz respeito ao que um
+perfil pode ver, não ao que pode existir no banco. A
+Seção~\ref{sec:rn-constraint} retoma esse grupo e explica o que decidimos
+fazer com cada caso.
+
+% ---------------------------------------------------------------------------
+% RN14, RN15 e RN16 dependem das entidades OPCIONAIS `avaliacao` e
+% `item_lista`, hoje FORA do escopo (13 entidades). Se o grupo decidir
+% inclui-las para chegar a 15, inserir as linhas abaixo entre RN13 e RN17:
+%
+% RN14 & Um perfil avalia um título no máximo uma vez, com nota de 1 a 5. \\
+% RN15 & Só pode avaliar um título quem já possui visualização registrada dele. \\
+% RN16 & Um título não se repete na lista de um mesmo perfil. \\
+%
+% Nao deixar regra orfa referenciando entidade inexistente.
+% ---------------------------------------------------------------------------
+
+\section{Diagrama Entidade-Relacionamento}\label{sec:der}
+
+\begin{figure}[ht]
+\centering
+% Substituir pelo DER exportado da ferramenta de modelagem:
+% \includegraphics[width=\textwidth]{der-nextmedia.png}
+\fbox{\parbox[c][0.28\textheight][c]{0.9\textwidth}{\centering\itshape
+Espaço reservado para o DER da NextMedia\\[2mm]
+\small (exportar para \bd{images/der-nextmedia.png})}}
+\caption{Diagrama Entidade-Relacionamento da NextMedia.}
+\label{fig:der}
+\end{figure}
+
+% ============================================================================
+\chapter{Modelo Lógico}\label{cap:logico}
+% ============================================================================
+
+\orientacao{\textbf{Parte 2} da entrega. O professor pede o \emph{diagrama
+lógico já normalizado, com possíveis justificativas}. O peso está nas
+justificativas da Seção~\ref{sec:justificativas}: o diagrama sozinho não
+sustenta a nota.}
+
+\section{DER lógico}\label{sec:diagrama-logico}
+
+\orientacao{Inserir o DER lógico exportado do ERD Tool do pgAdmin, com
+tabelas, chaves primárias, chaves estrangeiras e cardinalidades. Explicar no
+texto o que mudou em relação ao DER da Figura~\ref{fig:der} --- tabelas de
+junção, colunas de chave estrangeira, chaves compartilhadas --- e por quê,
+citando as regras de mapeamento aplicadas \citep{elmasri2019}.}
+
+\begin{figure}[ht]
+\centering
+% \includegraphics[width=\textwidth]{logico-nextmedia.png}
+\fbox{\parbox[c][0.28\textheight][c]{0.9\textwidth}{\centering\itshape
+Espaço reservado para o DER lógico da NextMedia\\[2mm]
+\small (exportar para \bd{images/logico-nextmedia.png})}}
+\caption{DER lógico normalizado da NextMedia.}
+\label{fig:logico}
+\end{figure}
+
+\section{Normalização}\label{sec:normalizacao}
+
+\orientacao{Demonstrar que o esquema está na Terceira Forma Normal, em prosa,
+sem transcrever a teoria. 1FN: ausência de atributos multivalorados e
+compostos --- mostrar como gêneros e participações foram tratados. 2FN: nas
+tabelas de chave composta, verificar que não há dependência parcial; o caso a
+analisar é \bd{participacao}. 3FN: ausência de dependências transitivas ---
+discutir \bd{assinatura} e \bd{episodio}. Fechar declarando a forma normal
+atingida e se houve alguma desnormalização consciente.}
+
+\section{Justificativas das decisões}\label{sec:justificativas}
+
+\orientacao{Núcleo do capítulo e onde a nota se decide. Cada subseção precisa
+desenvolver o argumento em prosa: problema, alternativas, escolha, custo
+assumido. Não basta listar.}
+
+\subsection{Mapeamento da especialização \bd{titulo}}
+
+\orientacao{Apresentar as três estratégias clássicas: (a) tabela única com
+atributo discriminador; (b) uma tabela por subtipo, sem supertipo;
+(c) supertipo mais subtipos compartilhando a chave primária. Justificar a
+escolha de (c): preserva a natureza total e exclusiva da especialização
+(RN06), evita a proliferação de colunas nulas de (a) e mantém simples as
+consultas sobre ``todos os títulos'', que (b) obrigaria a resolver por
+\bd{UNION}. Declarar o custo: uma junção adicional para montar a visão
+completa de um filme ou série.}
+
+\subsection{\bd{valor\_cobrado} em \bd{assinatura}}
+
+\orientacao{Antecipar a objeção: à primeira vista \bd{valor\_cobrado} duplica
+\bd{plano.preco\_mensal} e violaria a normalização. Argumentar que não --- o
+preço do plano muda ao longo do tempo e as cobranças já realizadas precisam
+permanecer corretas. É dado histórico, funcionalmente dependente da
+assinatura e não do plano. Sem essa explicação explícita, a decisão é lida
+como erro.}
+
+\subsection{Atributos derivados omitidos}
+
+\orientacao{Explicar a omissão de um atributo \emph{total de temporadas} em
+\bd{serie}: derivável por \bd{COUNT} sobre \bd{temporada}, armazená-lo criaria
+redundância sujeita a inconsistência. Se o grupo optar por incluí-lo por
+desempenho, declarar como desnormalização consciente mantida por
+\textit{trigger}.}
+
+\subsection{Chave primária composta de \bd{participacao}}
+
+\orientacao{Justificar a chave \mbox{(\bd{id\_titulo}, \bd{id\_pessoa},
+\bd{papel})}, que implementa RN11 e permite que a mesma pessoa acumule papéis
+no mesmo título. Mostrar que a tabela está em 3FN: \bd{personagem} e
+\bd{ordem\_credito} dependem da chave inteira, não de parte dela.}
+
+\subsection{Relacionamento exclusivo em \bd{visualizacao}}
+
+\orientacao{Explicar a implementação de RN12: duas chaves estrangeiras
+anuláveis (\bd{id\_filme} e \bd{id\_episodio}) mais um \bd{CHECK} garantindo
+que exatamente uma esteja preenchida. Apresentar a alternativa descartada ---
+um supertipo ``conteúdo exibível'' acima de \bd{filme} e \bd{episodio} ---
+reconhecendo que é conceitualmente mais elegante, mas mais pesada para o
+escopo da disciplina.}
+
+\subsection{Auto-relacionamentos}
+
+\orientacao{Tratar \bd{genero.id\_genero\_pai} e
+\bd{titulo.id\_titulo\_origem}: ambos aceitam NULL, pois raízes de hierarquia
+e títulos sem obra de origem são casos legítimos. Discutir o risco de ciclos
+(RN10), que o modelo relacional não impede declarativamente, e como seria
+detectado --- consulta recursiva (\bd{WITH RECURSIVE}) ou \textit{trigger} de
+validação.}
+
+% ============================================================================
+\chapter{Modelo Físico}\label{cap:fisico}
+% ============================================================================
+
+\orientacao{\textbf{Parte 3} da entrega. O professor pede código SQL para
+PostgreSQL com três coisas: comandos DDL que criem o esquema e as tabelas com
+\emph{todas} as restrições necessárias; comandos DML com a carga de dados
+iniciais de exemplo; e três consultas \bd{SELECT} que exemplifiquem a
+utilidade do minimundo. Este capítulo explica esse código; o script completo
+vai no Apêndice~\ref{ap:sql}.}
+
+\section{Convenções e criação do esquema}
+
+\orientacao{Registrar SGBD e versão (PostgreSQL, via pgAdmin) e as convenções
+de nomenclatura: identificadores em português, \bd{snake\_case}, tabelas no
+singular, chaves primárias \bd{id\_<tabela>}, \textit{constraints} nomeadas
+com prefixo (\bd{pk\_}, \bd{fk\_}, \bd{uq\_}, \bd{ck\_}). Justificar em uma
+frase por que nomear \textit{constraints} importa: mensagens de erro legíveis
+e migrações previsíveis. Comentar a Listagem~\ref{lst:schema}.}
+
+\begin{lstlisting}[caption={Criação do esquema do projeto.},label={lst:schema}]
+-- Esquema dedicado ao projeto, isolando os objetos da NextMedia
+-- dos demais objetos do banco.
+CREATE SCHEMA IF NOT EXISTS nextmedia;
+SET search_path TO nextmedia;
+\end{lstlisting}
+
+\section{Tabelas e restrições}
+
+\orientacao{Trazer as tabelas em listagens, agrupadas pelos mesmos quatro
+núcleos usados no Capítulo~\ref{cap:conceitual} e respeitando a ordem de
+dependência das chaves estrangeiras. Não despejar o arquivo inteiro aqui:
+selecionar os trechos representativos --- um de cada núcleo --- e deixar o
+script completo no Apêndice~\ref{ap:sql}. Cada listagem precede-se de um
+parágrafo dizendo o que cria e por quê.
+
+Os trechos que mais rendem discussão: a unicidade do \textit{e-mail} (RN01);
+a chave primária compartilhada dos subtipos \bd{filme} e \bd{serie}, em que a
+mesma coluna é chave primária e estrangeira (RN06); as chaves compostas das
+entidades fracas (RN07, RN08); e o \bd{CHECK} do relacionamento exclusivo em
+\bd{visualizacao} (RN12, RN13). A Listagem~\ref{lst:exemplo-tabela} mostra o
+padrão de nomenclatura a seguir.}
+
+\begin{lstlisting}[caption={Padrão de definição de tabela com \textit{constraints} nomeadas.},label={lst:exemplo-tabela}]
+CREATE TABLE nextmedia.plano (
+    id_plano          SERIAL,
+    nome              VARCHAR(60)    NOT NULL,
+    preco_mensal      NUMERIC(10,2)  NOT NULL,
+    max_telas         SMALLINT       NOT NULL,
+    max_perfis        SMALLINT       NOT NULL,
+    qualidade_video   VARCHAR(10)    NOT NULL,
+
+    CONSTRAINT pk_plano            PRIMARY KEY (id_plano),
+    CONSTRAINT uq_plano_nome       UNIQUE (nome),
+    CONSTRAINT ck_plano_preco      CHECK (preco_mensal >= 0),
+    CONSTRAINT ck_plano_telas      CHECK (max_telas BETWEEN 1 AND 8),
+    CONSTRAINT ck_plano_perfis     CHECK (max_perfis BETWEEN 1 AND 10)
+);
+\end{lstlisting}
+
+\section{Das regras de negócio às restrições}\label{sec:rn-constraint}
+
+\orientacao{Completar a Tabela~\ref{tab:rn-constraint} com todas as regras da
+Tabela~\ref{tab:regras} e discutir no texto as que \emph{não} se resolvem
+declarativamente --- RN03 e RN05 dependem do estado de outras tabelas e
+exigem \textit{trigger} ou validação na aplicação. Explicar a escolha feita.
+
+Fechar a seção justificando as ações de propagação das chaves estrangeiras:
+RN17 pede \bd{ON DELETE CASCADE} de \bd{conta} para perfis e histórico;
+RN18 pede que títulos não sejam apagados, o que sugere \bd{ON DELETE
+RESTRICT} nas referências ao catálogo mais uma coluna de data de saída. O
+contraste vale ser dito: dado de usuário é descartável, dado de catálogo é
+patrimônio.}
+
+\begin{table}[ht]
+\centering
+\caption{Mapeamento das regras de negócio para os mecanismos do modelo físico.}
+\label{tab:rn-constraint}
+\begin{tabularx}{0.95\textwidth}{p{0.08\textwidth} p{0.26\textwidth} X}
+\toprule
+\textbf{Regra} & \textbf{Mecanismo} & \textbf{Onde é aplicada} \\
+\midrule
+RN01 & \bd{UNIQUE}                  & \bd{conta.email} \\
+RN06 & Chave primária compartilhada & \bd{filme}, \bd{serie} \\
+RN11 & Chave primária composta      & \bd{participacao} \\
+RN12 & \bd{CHECK}                   & \bd{visualizacao} \\
+RN03 & \textit{Trigger} ou aplicação & A definir \\
+\multicolumn{3}{@{}l}{\small\itshape Completar com as demais regras da Tabela~\ref{tab:regras}.}\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Carga de dados de exemplo}\label{sec:carga}
+
+\orientacao{Os comandos DML que populam o banco. Descrever a estratégia da
+carga em um parágrafo e informar o volume por tabela, para que o leitor saiba
+que o esquema foi efetivamente executado e não apenas escrito.
+
+Os dados precisam ser suficientes para que as consultas da
+Seção~\ref{sec:consultas} retornem resultado interessante: sem pelo menos duas
+séries com temporadas e episódios, várias visualizações espalhadas entre
+perfis diferentes e algumas pessoas acumulando papéis, os \bd{SELECT}
+devolvem tabelas vazias ou óbvias. Respeitar a ordem de dependência das
+chaves estrangeiras na inserção.
+
+Se os dados forem fictícios mas verossímeis, vale uma frase dizendo isso ---
+títulos e nomes reais usados como exemplo não são um problema, mas convém
+deixar claro que a base é ilustrativa.}
+
+\begin{lstlisting}[caption={Exemplo de carga inicial.},label={lst:dml}]
+-- Planos comercializados. A carga comeca pelas tabelas sem dependencia.
+INSERT INTO nextmedia.plano (nome, preco_mensal, max_telas, max_perfis, qualidade_video)
+VALUES ('Basico',        19.90, 1, 2, 'SD'),
+       ('Intermediario', 39.90, 2, 4, 'HD'),
+       ('Premium',       59.90, 4, 6, '4K');
+\end{lstlisting}
+
+\section{Consultas de exemplo}\label{sec:consultas}
+
+\orientacao{As três consultas pedidas. Cada uma precisa de: um parágrafo
+dizendo que pergunta do negócio ela responde, a listagem do \bd{SELECT} e o
+resultado obtido. Consulta que só faz \bd{SELECT * FROM tabela} não demonstra
+utilidade nenhuma; escolher perguntas que exijam junção, agregação ou as duas.
+
+Sugestões que exercitam partes diferentes do modelo, a confirmar pelo grupo:
+uma que percorra a especialização e as entidades fracas (por exemplo, séries
+com o total de episódios por temporada); uma sobre o histórico de consumo
+(títulos mais assistidos no período, ou tempo total assistido por perfil); e
+uma que use o relacionamento N:N com atributos (pessoas que acumulam mais de
+um papel no mesmo título, ou elenco completo de um título em ordem de
+crédito). Uma consulta recursiva sobre a hierarquia de gêneros também
+funciona, e mostra domínio de \bd{WITH RECURSIVE}.}
+
+\subsection{Consulta 1}
+
+\orientacao{Pergunta de negócio, listagem e resultado.}
+
+\subsection{Consulta 2}
+
+\orientacao{Pergunta de negócio, listagem e resultado.}
+
+\subsection{Consulta 3}
+
+\orientacao{Pergunta de negócio, listagem e resultado.}
+
+% ============================================================================
+\chapter{Considerações Finais}
+% ============================================================================
+
+\orientacao{Meia página a uma página, sem subdivisões. Retomar o que foi
+construído nos três níveis, apontar as limitações conhecidas --- entidades
+deixadas fora do escopo, regras delegadas à aplicação, risco de ciclo nos
+auto-relacionamentos --- e indicar caminhos de evolução: índices para as
+consultas mais frequentes, particionamento do histórico de visualizações,
+inclusão das entidades de avaliação e lista.}
+
+% ============================================================================
+% APÊNDICE
+% ============================================================================
+\clearpage
+\appendix
+
+\chapter{Script SQL completo}\label{ap:sql}
+
+\orientacao{O arquivo \bd{.sql} na íntegra, comentado, na ordem em que deve
+ser executado: DDL (esquema, tabelas e restrições), DML (carga de dados
+iniciais) e as três consultas de exemplo. Quando o script estiver pronto em
+\bd{sql/nextmedia.sql}, descomentar a linha abaixo: ela insere o arquivo
+automaticamente, evitando que documento e script entregue divirjam.}
+
+% \lstinputlisting[caption={Script de criação do esquema NextMedia.},
+%                  label={lst:script-completo}]{sql/nextmedia.sql}
+
+% ============================================================================
+% REFERÊNCIAS
+% ============================================================================
+\IfFileExists{refs.bib}{
+    \clearpage
+    \renewcommand{\bibname}{Referências bibliográficas}
+    % \nocite{*} força a impressão de todas as entradas de refs.bib enquanto o
+    % texto ainda não tem citações reais. REMOVER quando as seções estiverem
+    % escritas e citando com \citet{} / \citep{}.
+    \nocite{*}
+    \bibliographystyle{plainnat}
+    \bibliography{refs}
+}{}
+
+\end{document}

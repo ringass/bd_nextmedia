@@ -1,0 +1,4 @@
+# Saídas de compilação LaTeX
+build/
+*.synctex.gz
+nextmedia.pdf
