@@ -299,60 +299,12 @@ CREATE TABLE visualizacao (
 
 
 -- ============================================================================
--- REGRAS QUE ESTE DDL NAO GARANTE
--- ============================================================================
--- As regras abaixo dependem de informacao que nao esta na linha gravada. Um
--- CHECK enxerga apenas a propria linha, e uma chave estrangeira apenas a
--- existencia da linha referenciada; nenhum dos dois alcanca outra tabela ou
--- uma arvore. Todas entram na proxima parte do script, como gatilhos.
---
---   RN03  Numero de perfis da conta nao excede o max_perfis do plano vigente.
---         O limite esta a duas tabelas de distancia: perfil -> conta ->
---         assinatura ativa -> plano.
---
---   RN06  A especializacao e TOTAL: todo titulo precisa estar em filme ou em
---         serie. A exclusividade ja esta resolvida acima, pela chave
---         estrangeira composta. A totalidade nao: no instante em que a linha
---         de titulo e inserida, a linha do subtipo ainda nao existe, o que
---         exige verificacao adiada ou gatilho.
---
---   RN09  Todo titulo tem ao menos um genero. Sao dois caminhos a cobrir. Na
---         insercao, o mesmo problema da RN06: o vinculo em titulo_genero so
---         pode ser criado depois do titulo. Na remocao, apagar um genero
---         cascateia para titulo_genero e pode tirar do titulo o ultimo que
---         ele tinha.
---
---   RN10  Hierarquia de genero sem ciclos. O ck_genero_pai acima barra apenas
---         o ciclo de tamanho 1; detectar A -> B -> A exige percorrer a arvore
---         com WITH RECURSIVE.
---
---   RN13  Tempo assistido nao excede a duracao do conteudo. Parece verificacao
---         local, mas duracao_min mora em filme ou em episodio, e um CHECK nao
---         enxerga outra tabela.
---
---   RN18  Titulo nao e removido fisicamente, so recebe data_saida. Nenhuma
---         chave estrangeira impede o DELETE: as referencias vindas de
---         participacao, titulo_genero e dos subtipos cascateiam, por decisao
---         de projeto (ver ACOES DE PROPAGACAO no cabecalho). So o RESTRICT de
---         visualizacao barra, e apenas para conteudo ja assistido. A regra e
---         responsabilidade de um gatilho BEFORE DELETE em titulo, e sem ele
---         um DELETE leva o titulo, o elenco e os generos de uma vez.
---
---   RN05  Perfil infantil so acessa titulos de classificacao ate 12 anos. E de
---         outra natureza: diz respeito ao que um perfil pode VER, nao ao que
---         pode existir no banco. Cabe a camada de aplicacao ou a uma visao.
---
--- Fora da numeracao, um caso que o minimundo cita e nenhuma RN enuncia:
---
---   Ciclo em titulo.id_titulo_origem. O ck_titulo_origem barra o titulo que se
---   origina de si mesmo, mas A -> B -> A passa. E o mesmo problema da RN10, na
---   outra hierarquia, e tem a mesma solucao.
--- ============================================================================
-
-
--- ============================================================================
 -- GATILHOS
 -- ============================================================================
+-- Os gatilhos DEFERRABLE INITIALLY DEFERRED so rodam no COMMIT. Como o
+-- pgAdmin usa autocommit, cada INSERT vira uma transacao sozinha e o
+-- adiamento nao ajuda: a carga precisa agrupar os inserts relacionados entre
+-- BEGIN e COMMIT explicitos.
 
 
 -- RN03 -- numero de perfis nao excede o max_perfis do plano vigente.
@@ -562,15 +514,11 @@ CREATE TRIGGER tg_titulo_sem_delete
 -- ============================================================================
 -- Base ilustrativa. Titulos, episodios e nomes de elenco sao reais; contas,
 -- perfis e visualizacoes sao ficticios.
---
+
 -- As series entram como recorte, nao completas: Dark com as tres temporadas,
 -- as outras tres so com a primeira. Carregar Breaking Bad, Better Call Saul e
 -- Sopranos por inteiro daria 211 episodios, fora da escala deste exemplo.
---
--- As chaves vao explicitas para que as referencias entre tabelas fiquem
--- legiveis. O setval no fim de cada bloco realinha a sequencia do SERIAL.
 
--- Nao remova: RN06 e RN09 so sao verificadas no COMMIT.
 BEGIN;
 
 -- ---------------------------------------------------------------- planos ---
