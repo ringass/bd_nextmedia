@@ -215,6 +215,7 @@ Departamento de Computação}
 	Caio César Souza Oliveira -- RA: 241025702 \\[2mm]
 	Mário Masao Mukai -- RA: 241022321 \\[2mm]
 	Murilo Tomaz Gonzaga -- RA: 241024684 \\[2mm]
+	Thiago Toreto Damaceno de Souza -- RA: 241026164 \\[2mm]
 
 	\vfill
 
@@ -258,9 +259,9 @@ O objetivo do trabalho é projetar o banco de dados dessa plataforma passando
 pelos três níveis de abstração usuais \citep{elmasri2019}: o conceitual, que
 independe de tecnologia; o lógico, já traduzido para o modelo relacional e
 normalizado; e o físico, que é um script de criação do esquema.
-Usamos o PostgreSQL como sistema gerenciador, e o DER lógico foi
-construído no ERD Tool, a ferramenta CASE integrada ao pgAdmin.
-% TODO: completar com a ferramenta usada no DER assim que o grupo decidir.
+Usamos o PostgreSQL como sistema gerenciador. Construímos o DER conceitual no
+brModelo, na notação de Chen, e o DER lógico no ERD Tool, a ferramenta CASE
+integrada ao pgAdmin.
 
 O escopo cobre contas, planos e assinaturas, os perfis que convivem dentro de
 uma mesma conta, o catálogo de títulos com suas temporadas, episódios e
@@ -300,8 +301,8 @@ mecanismo garante cada regra de negócio.
 A NextMedia vende acesso a um catálogo de vídeo. O cliente abre uma conta,
 identificada por um \textit{e-mail} único na plataforma, e contrata um plano,
 que define preço mensal, telas simultâneas, número de perfis e qualidade. O
-vínculo entre os dois é a assinatura, que guarda o período e o valor cobrado
---- registrado ali porque os planos mudam de preço. Na troca de plano, a
+vínculo entre os dois é a assinatura, que guarda o período e o valor cobrado,
+registrado ali porque os planos mudam de preço. Na troca de plano, a
 assinatura anterior é encerrada com data de término e uma nova é aberta, e só
 uma vale por vez. Dentro da conta convivem vários perfis, um por pessoa da
 casa, cada um com nome, avatar, idioma e histórico próprios; um perfil
@@ -327,30 +328,37 @@ duas decisões de retenção: um título que sai do catálogo recebe data de sa�
 e permanece no banco, para que as visualizações antigas continuem fazendo
 sentido; a conta encerrada leva junto perfis e histórico.
 
-O relato se traduz em treze entidades, agrupadas em quatro núcleos ---
-assinatura, catálogo, pessoas e consumo:
+O relato se traduz em doze entidades, agrupadas em quatro núcleos (assinatura,
+catálogo, pessoas e consumo):
 
 \begin{itemize}[label=--, leftmargin=*, itemsep=2pt]
-  \item \textbf{conta} --- assinante da plataforma; dados de acesso e cobrança.
-  \item \textbf{plano} --- catálogo de planos comercializados.
-  \item \textbf{assinatura} --- vínculo entre conta e plano, com período de vigência e valor cobrado.
-  \item \textbf{perfil} --- subusuário dentro de uma conta.
-  \item \textbf{titulo} --- unidade do catálogo; aponta para o título que lhe deu origem.
-  \item \textbf{filme} --- título que se assiste de uma vez, com duração própria.
-  \item \textbf{serie} --- título que se desdobra em temporadas.
-  \item \textbf{temporada} --- depende de uma série para existir.
-  \item \textbf{episodio} --- depende de uma temporada para existir.
-  \item \textbf{genero} --- categoria do catálogo, podendo ter um gênero que a contém.
-  \item \textbf{pessoa} --- elenco e equipe técnica.
-  \item \textbf{participacao} --- atuação de uma pessoa em um título, com papel e personagem.
-  \item \textbf{visualizacao} --- registro de que um perfil assistiu a um filme ou episódio.
+  \item \textbf{conta}: assinante da plataforma; dados de acesso e cobrança.
+  \item \textbf{plano}: catálogo de planos comercializados.
+  \item \textbf{assinatura}: vínculo entre conta e plano, com período de vigência e valor cobrado.
+  \item \textbf{perfil}: subusuário dentro de uma conta.
+  \item \textbf{titulo}: unidade do catálogo; aponta para o título que lhe deu origem.
+  \item \textbf{filme}: título que se assiste de uma vez, com duração própria.
+  \item \textbf{serie}: título que se desdobra em temporadas.
+  \item \textbf{temporada}: depende de uma série para existir.
+  \item \textbf{episodio}: depende de uma temporada para existir.
+  \item \textbf{genero}: categoria do catálogo, podendo ter um gênero que a contém.
+  \item \textbf{pessoa}: elenco e equipe técnica.
+  \item \textbf{visualizacao}: registro de que um perfil assistiu a um filme ou episódio.
 \end{itemize}
 
-A associação entre títulos e gêneros não entra nessa contagem: vira tabela
-própria no modelo lógico, já que um título tem vários gêneros e um gênero reúne
-vários títulos, mas é só o relacionamento entre duas entidades já listadas, sem
-informação própria para guardar. Os atributos de cada entidade aparecem no
-diagrama da Seção~\ref{sec:der} e no modelo lógico do
+Dois relacionamentos ficam de fora dessa contagem, por motivos diferentes. A
+associação entre títulos e gêneros não guarda informação própria: um título tem
+vários gêneros e um gênero reúne vários títulos, mas o vínculo é só o par, e
+ele vira tabela no modelo lógico sem nunca ter sido entidade.
+
+Já a participação de uma pessoa em um título carrega atributos próprios (o
+papel exercido, o personagem interpretado e a posição nos créditos) e por isso
+aparece no diagrama como relacionamento com atributos, não como
+retângulo. A distinção importa porque nada no minimundo se liga à
+participação: nenhuma entidade precisa referenciar uma atuação específica, e é
+só isso que justificaria promovê-la a entidade associativa. Como todo
+relacionamento N:N, ela também vira tabela. Os atributos de cada entidade
+aparecem no diagrama da Seção~\ref{sec:der} e no modelo lógico do
 Capítulo~\ref{cap:logico}.
 
 \section{Regras de negócio}\label{sec:regras}
@@ -404,23 +412,46 @@ RN18 & Um título retirado do catálogo recebe data de saída e não é removido
 Nem toda regra custa o mesmo para ser garantida. Algumas o próprio desenho do
 modelo torna impossíveis de violar: RN04 e RN07 dispensam verificação, porque
 um perfil só existe pendurado numa conta e uma temporada numa série. Outras se
-resolvem com uma restrição declarada na criação da tabela --- RN01 e RN08 são
-unicidade, RN11 vira a chave primária composta de \bd{participacao}, RN12 e
-RN13 são verificações sobre a própria linha, e RN17 é a ação de propagação da
-chave estrangeira. Em ambos os casos o banco cuida sozinho, por qualquer
-caminho de escrita.
+resolvem com uma restrição declarada na criação da tabela: RN01 e RN08 são
+unicidade, RN11 vira a chave primária composta de \bd{participacao}, RN12 é
+verificação sobre a própria linha, e RN17 é a ação de propagação da chave
+estrangeira. A RN01 precisa de um reforço: como endereço de \textit{e-mail} não
+distingue maiúsculas de minúsculas, a unicidade do texto sozinha deixaria
+passar duas contas do mesmo endereço escrito de formas diferentes. Uma
+verificação obriga o endereço a ser gravado em caixa baixa, e sobre um texto já
+normalizado a unicidade simples resolve.
 
-O grupo problemático é outro: RN02, RN03, RN09 e RN10 dependem de informação
-que não está na linha gravada --- as demais assinaturas da conta, o plano a
-duas tabelas de distância, um vínculo criado só depois do título, ou a árvore
-inteira de gêneros. RN05, por fim, é de outra natureza: diz respeito ao que um
-perfil pode ver, não ao que pode existir no banco. A
-Seção~\ref{sec:rn-constraint} retoma esse grupo e explica o que decidimos
-fazer com cada caso.
+A RN02 também se resolve sozinha, mas por índice, não por restrição de tabela.
+Uma assinatura está ativa exatamente enquanto sua data de término é nula, de
+modo que um índice único parcial sobre as linhas nesse estado basta para
+garantir que só exista uma por conta. Em todos esses casos o banco cuida
+sozinho, por qualquer caminho de escrita.
+
+A RN06 fica partida ao meio. A exclusividade entre filme e série é declarativa:
+o discriminador desenhado no diagrama vira uma coluna, e os dois subtipos a
+referenciam numa chave estrangeira composta, de modo que o mesmo título não
+cabe nas duas tabelas. A totalidade não, porque a linha do subtipo só nasce
+depois da linha do título, e no instante da inserção ainda não há o que
+verificar.
+
+Esse é justamente o traço do grupo problemático: RN03, RN09, RN10 e RN13
+dependem de informação que não está na linha gravada. O plano a duas tabelas de
+distância, um vínculo de gênero criado só depois do título, a árvore inteira de
+gêneros, a duração do conteúdo assistido. RN13 é a menos evidente das quatro:
+parece restrição local, mas a duração mora em \bd{filme} ou \bd{episodio}, e um
+\bd{CHECK} de linha não enxerga outra tabela.
+
+Sobram duas de natureza diferente. A RN18 não é restrição estrutural, e sim
+política de retenção: nenhuma chave estrangeira impede apagar um título, e no
+modelo físico decidimos que as referências ao catálogo propagam a exclusão,
+deixando a guarda inteiramente a cargo de um gatilho. A RN05 diz respeito ao
+que um perfil pode ver, não ao que pode existir no banco. A
+Seção~\ref{sec:rn-constraint} retoma todos esses casos e explica o que
+decidimos fazer com cada um.
 
 % ---------------------------------------------------------------------------
 % RN14, RN15 e RN16 dependem das entidades OPCIONAIS `avaliacao` e
-% `item_lista`, hoje FORA do escopo (13 entidades). Se o grupo decidir
+% `item_lista`, hoje FORA do escopo (12 entidades). Se o grupo decidir
 % inclui-las para chegar a 15, inserir as linhas abaixo entre RN13 e RN17:
 %
 % RN14 & Um perfil avalia um título no máximo uma vez, com nota de 1 a 5. \\
@@ -432,16 +463,40 @@ fazer com cada caso.
 
 \section{Diagrama Entidade-Relacionamento}\label{sec:der}
 
-\begin{figure}[ht]
-\centering
-% Substituir pelo DER exportado da ferramenta de modelagem:
-% \includegraphics[width=\textwidth]{der-nextmedia.png}
-\fbox{\parbox[c][0.28\textheight][c]{0.9\textwidth}{\centering\itshape
-Espaço reservado para o DER da NextMedia\\[2mm]
-\small (exportar para \bd{images/der-nextmedia.png})}}
-\caption{Diagrama Entidade-Relacionamento da NextMedia.}
-\label{fig:der}
+A Figura~\ref{fig:der-conceitual} apresenta o diagrama entidade-relacionamento
+da NextMedia, construído no brModelo segundo a notação de Chen. Os quatro
+núcleos da Seção~\ref{sec:minimundo} ocupam regiões distintas do desenho:
+assinatura no alto, catálogo no centro e à direita, pessoas à esquerda do
+título, consumo na coluna da esquerda.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.88\textwidth]{images/DER-conceitual.png}
+    \caption{Diagrama Entidade-Relacionamento da NextMedia.}
+    \label{fig:der-conceitual}
+    % Rotulo antigo, mantido so porque o Capitulo 3 ainda cita \ref{fig:der}.
+    % Pode sair quando aquela secao for reescrita.
+    \label{fig:der}
 \end{figure}
+
+Três construções merecem atenção na leitura. A especialização de título em
+filme e série está marcada com o discriminador de disjunção, indicando que os
+subtipos são mutuamente exclusivos; a totalidade, que o minimundo também exige,
+está enunciada na RN06 e retomada no Capítulo~\ref{cap:logico}, no mapeamento
+da especialização. Os dois auto-relacionamentos trazem os papéis escritos
+sobre cada ligação (pai e filho em \emph{subgênero de}, origem e continuação
+em \emph{origina}), sem os quais não haveria como distinguir as duas pontas,
+já que ambas chegam na mesma entidade. E o relacionamento de participação
+carrega atributos próprios, desenhados junto ao losango.
+
+Nem tudo o que o minimundo exige cabe na notação. Temporada e episódio são
+entidades fracas, mas nada no contorno as distingue das demais. A totalidade da
+especialização, a exclusividade entre os dois relacionamentos de visualização
+(cada registro aponta para um filme ou para um episódio, nunca para ambos) e a
+ausência de ciclos na hierarquia de gêneros também ficam sem representação
+gráfica. As quatro convenções estão escritas na caixa de notas do diagrama,
+cada uma ao lado da regra que a enuncia; fazê-las valer é problema do modelo
+físico, tratado no Capítulo~\ref{cap:fisico}.
 
 % ============================================================================
 \chapter{Modelo Lógico}\label{cap:logico}
@@ -543,47 +598,33 @@ validação.}
 \chapter{Modelo Físico}\label{cap:fisico}
 % ============================================================================
 
-\orientacao{\textbf{Parte 3} da entrega. O professor pede código SQL para
-PostgreSQL com três coisas: comandos DDL que criem o esquema e as tabelas com
-\emph{todas} as restrições necessárias; comandos DML com a carga de dados
-iniciais de exemplo; e três consultas \bd{SELECT} que exemplifiquem a
-utilidade do minimundo. Este capítulo explica esse código; o script completo
-vai no Apêndice~\ref{ap:sql}.}
-
 \section{Convenções e criação do esquema}
 
-\orientacao{Registrar SGBD e versão (PostgreSQL, via pgAdmin) e as convenções
-de nomenclatura: identificadores em português, \bd{snake\_case}, tabelas no
-singular, chaves primárias \bd{id\_<tabela>}, \textit{constraints} nomeadas
-com prefixo (\bd{pk\_}, \bd{fk\_}, \bd{uq\_}, \bd{ck\_}). Justificar em uma
-frase por que nomear \textit{constraints} importa: mensagens de erro legíveis
-e migrações previsíveis. Comentar a Listagem~\ref{lst:schema}.}
+PostgreSQL, criado e testado no pgAdmin. Identificadores em português,
+\bd{snake\_case}, tabelas no singular, chave primária simples sempre
+\bd{id\_<tabela>}. Toda \textit{constraint} tem nome, com prefixo \bd{pk\_},
+\bd{fk\_}, \bd{uq\_} ou \bd{ck\_}: é o que faz a mensagem de erro dizer qual
+regra foi violada, em vez de um código gerado pelo banco.
 
-\begin{lstlisting}[caption={Criação do esquema do projeto.},label={lst:schema}]
+\begin{lstlisting}[caption={Criação do esquema do projeto.},label={lst:schema},basicstyle=\ttfamily\scriptsize]
 -- Esquema dedicado ao projeto, isolando os objetos da NextMedia
 -- dos demais objetos do banco.
 CREATE SCHEMA IF NOT EXISTS nextmedia;
 SET search_path TO nextmedia;
 \end{lstlisting}
 
+Depois do \bd{SET} nenhum nome é qualificado, o que mantém o script
+independente do nome do esquema. Em troca, o \bd{search\_path} vale só para a
+sessão em que rodou, e cada aba do pgAdmin é uma sessão: rodar o arquivo em
+pedaços, em abas diferentes, cria tabelas em \bd{public} sem erro nenhum.
+
 \section{Tabelas e restrições}
 
-\orientacao{Trazer as tabelas em listagens, agrupadas pelos mesmos quatro
-núcleos usados no Capítulo~\ref{cap:conceitual} e respeitando a ordem de
-dependência das chaves estrangeiras. Não despejar o arquivo inteiro aqui:
-selecionar os trechos representativos --- um de cada núcleo --- e deixar o
-script completo no Apêndice~\ref{ap:sql}. Cada listagem precede-se de um
-parágrafo dizendo o que cria e por quê.
+São quatorze tabelas, na ordem de dependência das chaves estrangeiras. A
+Listagem~\ref{lst:exemplo-tabela} fixa o padrão que todas seguem.
 
-Os trechos que mais rendem discussão: a unicidade do \textit{e-mail} (RN01);
-a chave primária compartilhada dos subtipos \bd{filme} e \bd{serie}, em que a
-mesma coluna é chave primária e estrangeira (RN06); as chaves compostas das
-entidades fracas (RN07, RN08); e o \bd{CHECK} do relacionamento exclusivo em
-\bd{visualizacao} (RN12, RN13). A Listagem~\ref{lst:exemplo-tabela} mostra o
-padrão de nomenclatura a seguir.}
-
-\begin{lstlisting}[caption={Padrão de definição de tabela com \textit{constraints} nomeadas.},label={lst:exemplo-tabela}]
-CREATE TABLE nextmedia.plano (
+\begin{lstlisting}[caption={Padrão de definição de tabela com \textit{constraints} nomeadas.},label={lst:exemplo-tabela},basicstyle=\ttfamily\scriptsize]
+CREATE TABLE plano (
     id_plano          SERIAL,
     nome              VARCHAR(60)    NOT NULL,
     preco_mensal      NUMERIC(10,2)  NOT NULL,
@@ -595,41 +636,264 @@ CREATE TABLE nextmedia.plano (
     CONSTRAINT uq_plano_nome       UNIQUE (nome),
     CONSTRAINT ck_plano_preco      CHECK (preco_mensal >= 0),
     CONSTRAINT ck_plano_telas      CHECK (max_telas BETWEEN 1 AND 8),
-    CONSTRAINT ck_plano_perfis     CHECK (max_perfis BETWEEN 1 AND 10)
+    CONSTRAINT ck_plano_perfis     CHECK (max_perfis BETWEEN 1 AND 10),
+    CONSTRAINT ck_plano_qualidade  CHECK (qualidade_video IN ('SD', 'HD', '4K'))
+);
+\end{lstlisting}
+
+O resto da seção mostra os três trechos em que o mapeamento não foi mecânico.
+O script completo está no Apêndice~\ref{ap:sql}.
+
+A especialização usa chave primária compartilhada, e o discriminador
+\bd{tipo} é o que torna a exclusividade da RN06 verificável pelo banco: os
+subtipos referenciam \mbox{(\bd{id\_titulo}, \bd{tipo})} e cada um trava o
+próprio valor, de modo que um título marcado como série não encontra par em
+\bd{filme}.
+
+\begin{lstlisting}[caption={Especialização por chave primária compartilhada mais discriminador.},label={lst:especializacao},basicstyle=\ttfamily\scriptsize]
+CREATE TABLE titulo (
+    id_titulo                 SERIAL,
+    tipo                      CHAR(1)      NOT NULL,
+    -- ... demais colunas ...
+    CONSTRAINT pk_titulo         PRIMARY KEY (id_titulo),
+    -- Redundante em relacao a pk_titulo, mas necessaria: o PostgreSQL
+    -- exige uma restricao unica sobre exatamente as colunas que a chave
+    -- estrangeira composta dos subtipos referencia.
+    CONSTRAINT uq_titulo_tipo    UNIQUE (id_titulo, tipo),
+    CONSTRAINT fk_titulo_origem  FOREIGN KEY (id_titulo_origem)
+        REFERENCES titulo (id_titulo) ON DELETE RESTRICT,
+    CONSTRAINT ck_titulo_tipo    CHECK (tipo IN ('F', 'S')),           -- RN06
+    -- ... demais verificacoes de dominio ...
+);
+
+CREATE TABLE filme (
+    id_filme     INTEGER  NOT NULL,
+    tipo         CHAR(1)  NOT NULL DEFAULT 'F',
+    duracao_min  SMALLINT NOT NULL,
+
+    CONSTRAINT pk_filme         PRIMARY KEY (id_filme),
+    CONSTRAINT ck_filme_tipo    CHECK (tipo = 'F'),
+    CONSTRAINT fk_filme_titulo  FOREIGN KEY (id_filme, tipo)
+        REFERENCES titulo (id_titulo, tipo) ON DELETE CASCADE,
+    CONSTRAINT ck_filme_duracao CHECK (duracao_min > 0)
+);
+
+CREATE TABLE serie (
+    id_serie          INTEGER  NOT NULL,
+    tipo              CHAR(1)  NOT NULL DEFAULT 'S',
+    ano_encerramento  SMALLINT,
+    em_producao       BOOLEAN  NOT NULL DEFAULT TRUE,
+
+    CONSTRAINT pk_serie        PRIMARY KEY (id_serie),
+    CONSTRAINT ck_serie_tipo   CHECK (tipo = 'S'),
+    CONSTRAINT fk_serie_titulo FOREIGN KEY (id_serie, tipo)
+        REFERENCES titulo (id_titulo, tipo) ON DELETE CASCADE,
+    -- Serie com ano de encerramento nao pode continuar em producao.
+    CONSTRAINT ck_serie_fim    CHECK (ano_encerramento IS NULL OR NOT em_producao)
+);
+\end{lstlisting}
+
+Temporada e episódio são entidades fracas. A chave primária de cada uma
+carrega a chave da proprietária, o que resolve RN07 e RN08 sem verificação
+nenhuma e deixa \bd{episodio} com uma chave tripla.
+
+\begin{lstlisting}[caption={Entidades fracas e suas chaves primárias compostas.},label={lst:fraca},basicstyle=\ttfamily\scriptsize]
+CREATE TABLE temporada (
+    id_serie        INTEGER   NOT NULL,
+    num_temporada   SMALLINT  NOT NULL,
+    ano_lancamento  SMALLINT,
+    subtitulo       VARCHAR(120),
+
+    CONSTRAINT pk_temporada       PRIMARY KEY (id_serie, num_temporada),
+    CONSTRAINT fk_temporada_serie FOREIGN KEY (id_serie)
+        REFERENCES serie (id_serie) ON DELETE CASCADE,
+    CONSTRAINT ck_temporada_num   CHECK (num_temporada > 0),
+    CONSTRAINT ck_temporada_ano   CHECK (ano_lancamento IS NULL
+                                         OR ano_lancamento BETWEEN 1888 AND 2200)
+);
+
+CREATE TABLE episodio (
+    id_serie       INTEGER      NOT NULL,
+    num_temporada  SMALLINT     NOT NULL,
+    num_episodio   SMALLINT     NOT NULL,
+    nome           VARCHAR(200) NOT NULL,
+    data_estreia   DATE,
+    sinopse        TEXT,
+    duracao_min    SMALLINT     NOT NULL,
+
+    CONSTRAINT pk_episodio           PRIMARY KEY (id_serie, num_temporada, num_episodio),
+    CONSTRAINT fk_episodio_temporada FOREIGN KEY (id_serie, num_temporada)
+        REFERENCES temporada (id_serie, num_temporada) ON DELETE CASCADE,
+    CONSTRAINT ck_episodio_num       CHECK (num_episodio > 0),        -- RN08
+    CONSTRAINT ck_episodio_duracao   CHECK (duracao_min > 0)
+);
+\end{lstlisting}
+
+A visualização aponta para um filme ou para um episódio. São quatro colunas
+anuláveis, e não duas, porque a chave do episódio é tripla. O \bd{CHECK} exige
+que um lado esteja inteiro e o outro inteiramente nulo.
+
+\begin{lstlisting}[caption={Relacionamento exclusivo em \bd{visualizacao} (RN12).},label={lst:exclusivo},basicstyle=\ttfamily\scriptsize]
+CREATE TABLE visualizacao (
+    id_visualizacao      SERIAL,
+    id_perfil            INTEGER    NOT NULL,
+    id_filme             INTEGER,
+    id_serie             INTEGER,
+    num_temporada        SMALLINT,
+    num_episodio         SMALLINT,
+    -- ... demais colunas ...
+    CONSTRAINT pk_visualizacao          PRIMARY KEY (id_visualizacao),
+    CONSTRAINT fk_visualizacao_perfil   FOREIGN KEY (id_perfil)
+        REFERENCES perfil (id_perfil) ON DELETE CASCADE,     -- RN17
+    CONSTRAINT fk_visualizacao_filme    FOREIGN KEY (id_filme)
+        REFERENCES filme (id_filme) ON DELETE RESTRICT,      -- RN18
+    CONSTRAINT fk_visualizacao_episodio FOREIGN KEY (id_serie, num_temporada, num_episodio)
+        REFERENCES episodio (id_serie, num_temporada, num_episodio)
+        ON DELETE RESTRICT,                                            -- RN18
+    -- ... verificacoes de dominio ...
+    CONSTRAINT ck_visualizacao_exclusivo CHECK (
+        (id_filme IS NOT NULL
+         AND id_serie IS NULL AND num_temporada IS NULL AND num_episodio IS NULL)
+        OR
+        (id_filme IS NULL
+         AND id_serie IS NOT NULL AND num_temporada IS NOT NULL AND num_episodio IS NOT NULL)
+    )
 );
 \end{lstlisting}
 
 \section{Das regras de negócio às restrições}\label{sec:rn-constraint}
 
-\orientacao{Completar a Tabela~\ref{tab:rn-constraint} com todas as regras da
-Tabela~\ref{tab:regras} e discutir no texto as que \emph{não} se resolvem
-declarativamente --- RN03 e RN05 dependem do estado de outras tabelas e
-exigem \textit{trigger} ou validação na aplicação. Explicar a escolha feita.
-
-Fechar a seção justificando as ações de propagação das chaves estrangeiras:
-RN17 pede \bd{ON DELETE CASCADE} de \bd{conta} para perfis e histórico;
-RN18 pede que títulos não sejam apagados, o que sugere \bd{ON DELETE
-RESTRICT} nas referências ao catálogo mais uma coluna de data de saída. O
-contraste vale ser dito: dado de usuário é descartável, dado de catálogo é
-patrimônio.}
+A Tabela~\ref{tab:rn-constraint} resume onde cada regra da
+Tabela~\ref{tab:regras} é garantida.
 
 \begin{table}[ht]
 \centering
 \caption{Mapeamento das regras de negócio para os mecanismos do modelo físico.}
 \label{tab:rn-constraint}
-\begin{tabularx}{0.95\textwidth}{p{0.08\textwidth} p{0.26\textwidth} X}
+\begin{tabularx}{0.98\textwidth}{p{0.07\textwidth} p{0.27\textwidth} X}
 \toprule
 \textbf{Regra} & \textbf{Mecanismo} & \textbf{Onde é aplicada} \\
 \midrule
-RN01 & \bd{UNIQUE}                  & \bd{conta.email} \\
-RN06 & Chave primária compartilhada & \bd{filme}, \bd{serie} \\
-RN11 & Chave primária composta      & \bd{participacao} \\
-RN12 & \bd{CHECK}                   & \bd{visualizacao} \\
-RN03 & \textit{Trigger} ou aplicação & A definir \\
-\multicolumn{3}{@{}l}{\small\itshape Completar com as demais regras da Tabela~\ref{tab:regras}.}\\
+RN01 & \bd{UNIQUE} mais \bd{CHECK} & \bd{conta.email}, gravado em caixa baixa \\
+RN02 & Índice único parcial & \bd{assinatura}, linhas de \bd{data\_fim} nula \\
+RN03 & \textit{Trigger} & \bd{perfil}, contra o \bd{max\_perfis} do plano vigente \\
+RN04 & Estrutural & \bd{perfil.id\_conta}, obrigatória \\
+RN05 & Aplicação & fora do banco \\
+RN06 & Chave estrangeira composta sobre o discriminador; \textit{trigger} para a totalidade & \bd{filme}, \bd{serie}, \bd{titulo} \\
+RN07 & Estrutural & \bd{temporada}, \bd{episodio} \\
+RN08 & Chave primária composta & \bd{temporada}, \bd{episodio} \\
+RN09 & \textit{Trigger} & \bd{titulo\_genero} \\
+RN10 & \bd{CHECK} parcial e \textit{trigger} & \bd{genero.id\_genero\_pai} \\
+RN11 & Chave primária composta & \bd{participacao} \\
+RN12 & \bd{CHECK} & \bd{visualizacao} \\
+RN13 & \textit{Trigger} & \bd{visualizacao}, contra a duração em \bd{filme} ou \bd{episodio} \\
+RN17 & \bd{ON DELETE CASCADE} & \bd{conta} para perfis, assinaturas e histórico \\
+RN18 & \textit{Trigger} & \bd{titulo} \\
 \bottomrule
 \end{tabularx}
 \end{table}
+
+Duas regras não couberam na sintaxe de restrição de tabela e viraram índice. A
+RN01 porque a unicidade precisa ignorar maiúsculas, o que uma verificação de
+caixa baixa resolve junto com o \bd{UNIQUE}; a RN02 porque depende das demais
+assinaturas da conta, e uma assinatura está ativa exatamente enquanto sua data
+de término é nula.
+
+\begin{lstlisting}[caption={Regras que se resolvem por índice.},label={lst:indices},basicstyle=\ttfamily\scriptsize]
+CREATE UNIQUE INDEX uq_assinatura_ativa
+    ON assinatura (id_conta)
+    WHERE data_fim IS NULL;
+\end{lstlisting}
+
+Seis regras não se resolvem de jeito nenhum no DDL, porque dependem de
+informação que a linha gravada não tem: RN03, RN09, RN10, RN13, a totalidade
+da RN06 e a RN18. Todas ficam para gatilho. A RN05 fica de fora do banco, por
+outro motivo: trata do que um perfil pode ver, não do que pode existir.
+
+As ações de propagação seguem o significado do vínculo, não a política de
+retenção. Cascateia quando a linha filha não significa nada sem a pai, que é o
+que a RN17 manda fazer com conta, perfis e histórico, e vale igualmente para
+os subtipos, as entidades fracas e as duas tabelas de ligação. Restringe
+quando a filha tem vida própria: a visualização é histórico do perfil e
+sobrevive à saída do conteúdo do catálogo, e \bd{valor\_cobrado} precisa
+continuar correto depois que o plano mudar.
+
+A RN18 não entra nessa conta. Nenhuma chave estrangeira impede apagar um
+título, e a guarda do catálogo é inteiramente do gatilho.
+
+\section{Gatilhos}\label{sec:gatilhos}
+
+Seis regras ficaram de fora do DDL declarativo e todas viram gatilho. Quatro
+são diretas: RN03 soma os perfis da conta e compara com o \bd{max\_perfis} do
+plano vigente, RN13 busca a duração em \bd{filme} ou \bd{episodio}, RN18
+apenas recusa o \bd{DELETE}, e a verificação da RN10 ganha uma gêmea sem
+número, para a cadeia de franquias. Duas pedem mais cuidado.
+
+RN06 e RN09 não podem ser verificadas no momento da inserção, porque a linha
+do subtipo e o vínculo de gênero só existem depois do título. Um gatilho comum
+reprovaria toda inserção, inclusive as corretas. A saída é adiar a verificação
+para o \bd{COMMIT}.
+
+\begin{lstlisting}[caption={Verificação adiada da totalidade da especialização (RN06).},label={lst:gatilho-adiado},basicstyle=\ttfamily\scriptsize]
+CREATE FUNCTION fn_titulo_total() RETURNS TRIGGER AS $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM filme WHERE id_filme = NEW.id_titulo)
+       AND NOT EXISTS (SELECT 1 FROM serie WHERE id_serie = NEW.id_titulo) THEN
+        RAISE EXCEPTION 'RN06: titulo % nao foi gravado como filme nem como serie',
+                        NEW.id_titulo;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE CONSTRAINT TRIGGER tg_titulo_total
+    AFTER INSERT ON titulo
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW EXECUTE FUNCTION fn_titulo_total();
+\end{lstlisting}
+
+Isso muda a forma da carga. O pgAdmin roda em \textit{autocommit}, e aí cada
+\bd{INSERT} é uma transação sozinha, de modo que o adiamento não ajudaria em
+nada. Os comandos relacionados precisam ficar entre \bd{BEGIN} e \bd{COMMIT}
+explícitos, e é o que a Seção~\ref{sec:carga} faz.
+
+A RN10 é a outra que foge do trivial. Detectar um ciclo exige percorrer a
+hierarquia inteira, o que em SQL se faz com uma consulta recursiva: partindo do
+pai proposto, ela sobe a cadeia de ancestrais, e se reencontrar o próprio
+gênero é porque o vínculo fecharia um ciclo.
+
+\begin{lstlisting}[caption={Detecção de ciclo na hierarquia de gêneros (RN10).},label={lst:gatilho-ciclo},basicstyle=\ttfamily\scriptsize]
+CREATE FUNCTION fn_genero_sem_ciclo() RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.id_genero_pai IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    IF EXISTS (
+        WITH RECURSIVE ancestral(id) AS (
+            SELECT NEW.id_genero_pai
+            UNION ALL
+            SELECT g.id_genero_pai
+              FROM genero g
+              JOIN ancestral a ON g.id_genero = a.id
+             WHERE g.id_genero_pai IS NOT NULL
+        )
+        SELECT 1 FROM ancestral WHERE id = NEW.id_genero
+    ) THEN
+        RAISE EXCEPTION 'RN10: o genero % fecharia um ciclo na hierarquia',
+                        NEW.id_genero;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tg_genero_sem_ciclo
+    BEFORE INSERT OR UPDATE ON genero
+    FOR EACH ROW EXECUTE FUNCTION fn_genero_sem_ciclo();
+\end{lstlisting}
+
+Os outros quatro seguem o mesmo padrão e estão no Apêndice~\ref{ap:sql}.
 
 \section{Carga de dados de exemplo}\label{sec:carga}
 
@@ -650,7 +914,7 @@ deixar claro que a base é ilustrativa.}
 
 \begin{lstlisting}[caption={Exemplo de carga inicial.},label={lst:dml}]
 -- Planos comercializados. A carga comeca pelas tabelas sem dependencia.
-INSERT INTO nextmedia.plano (nome, preco_mensal, max_telas, max_perfis, qualidade_video)
+INSERT INTO plano (nome, preco_mensal, max_telas, max_perfis, qualidade_video)
 VALUES ('Basico',        19.90, 1, 2, 'SD'),
        ('Intermediario', 39.90, 2, 4, 'HD'),
        ('Premium',       59.90, 4, 6, '4K');
