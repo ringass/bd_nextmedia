@@ -793,11 +793,9 @@ RN18 & \textit{Trigger} & \bd{titulo} \\
 \end{tabularx}
 \end{table}
 
-Duas regras não couberam na sintaxe de restrição de tabela e viraram índice. A
-RN01 porque a unicidade precisa ignorar maiúsculas, o que uma verificação de
-caixa baixa resolve junto com o \bd{UNIQUE}; a RN02 porque depende das demais
-assinaturas da conta, e uma assinatura está ativa exatamente enquanto sua data
-de término é nula.
+A RN02 é a única que não coube na sintaxe de restrição de tabela. Como uma
+assinatura está ativa exatamente enquanto sua data de término é nula, um índice
+único parcial sobre as linhas nesse estado basta.
 
 \begin{lstlisting}[caption={Regras que se resolvem por índice.},label={lst:indices},basicstyle=\ttfamily\scriptsize]
 CREATE UNIQUE INDEX uq_assinatura_ativa
@@ -805,21 +803,14 @@ CREATE UNIQUE INDEX uq_assinatura_ativa
     WHERE data_fim IS NULL;
 \end{lstlisting}
 
-Seis regras não se resolvem de jeito nenhum no DDL, porque dependem de
-informação que a linha gravada não tem: RN03, RN09, RN10, RN13, a totalidade
-da RN06 e a RN18. Todas ficam para gatilho. A RN05 fica de fora do banco, por
-outro motivo: trata do que um perfil pode ver, não do que pode existir.
-
 As ações de propagação seguem o significado do vínculo, não a política de
 retenção. Cascateia quando a linha filha não significa nada sem a pai, que é o
-que a RN17 manda fazer com conta, perfis e histórico, e vale igualmente para
-os subtipos, as entidades fracas e as duas tabelas de ligação. Restringe
-quando a filha tem vida própria: a visualização é histórico do perfil e
-sobrevive à saída do conteúdo do catálogo, e \bd{valor\_cobrado} precisa
-continuar correto depois que o plano mudar.
-
-A RN18 não entra nessa conta. Nenhuma chave estrangeira impede apagar um
-título, e a guarda do catálogo é inteiramente do gatilho.
+que a RN17 manda fazer com conta, perfis e histórico, e vale igualmente para os
+subtipos, as entidades fracas e as duas tabelas de ligação. Restringe quando a
+filha tem vida própria, como a visualização, que é histórico do perfil e
+sobrevive à saída do conteúdo do catálogo. Com isso nenhuma chave estrangeira
+impede apagar um título, e a guarda do catálogo fica inteiramente com o gatilho
+da RN18.
 
 \section{Gatilhos}\label{sec:gatilhos}
 
