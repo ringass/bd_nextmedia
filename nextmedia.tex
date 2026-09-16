@@ -1017,6 +1017,35 @@ Vince Gilligan        & Breaking Bad      & 2 & diretor, roteirista \\
 \end{table}
 
 % ============================================================================
+\chapter{Conclusão}\label{cap:conclusao}
+% ============================================================================
+
+Ao fim do projeto, a NextMedia saiu de uma ideia de plataforma de
+\textit{streaming} para um banco de dados pronto para rodar. O caminho passou
+pelos três níveis de abstração que a disciplina propõe. Começamos entendendo o
+negócio e desenhando o modelo conceitual, junto com as regras que ele precisa
+respeitar. Em seguida traduzimos esse desenho para tabelas, cuidando da
+normalização e explicando cada escolha. Por fim escrevemos o esquema no
+PostgreSQL, com as restrições e os gatilhos que fazem as regras valerem, além
+de uma carga de exemplo para ver o banco funcionando de verdade.
+
+Modelar esse domínio nos obrigou a resolver algumas situações que não tinham
+resposta óbvia. A mais trabalhosa foi garantir que um título fosse filme ou
+série sem abrir espaço para inconsistência, o que resolvemos com a chave
+compartilhada e o discriminador de tipo. Também tivemos de preservar o
+histórico da plataforma, tanto o valor cobrado de cada assinatura quanto os
+títulos que saem do catálogo mas continuam no banco. E percebemos, na prática,
+que cada regra de negócio pede um mecanismo diferente, de uma simples restrição
+na tabela até um gatilho que consulta outras linhas, dependendo de onde a
+informação está.
+
+No balanço final, o esquema ficou na terceira forma normal e dá conta do
+minimundo que propusemos, sem guardar informação repetida à toa. Se há uma
+lição que levamos do trabalho, é que o diagrama sozinho não diz muita coisa. O
+que realmente sustenta um projeto de banco de dados são as justificativas por
+trás de cada decisão, e foi isso que tentamos deixar claro ao longo do texto.
+
+% ============================================================================
 % REFERÊNCIAS
 % ============================================================================
 \IfFileExists{refs.bib}{
