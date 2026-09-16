@@ -39,6 +39,7 @@
 \usepackage{fancyhdr}
 \usepackage{needspace}
 \usepackage{indentfirst}
+\usepackage{pdflscape}
 \usepackage[top=2cm,bottom=2cm,left=2cm,right=2cm]{geometry}
 
 \hypersetup{
@@ -468,87 +469,108 @@ físico, tratado no Capítulo~\ref{cap:fisico}.
 \chapter{Modelo Lógico}\label{cap:logico}
 % ============================================================================
 
-\orientacao{\textbf{Parte 2} da entrega. O professor pede o \emph{diagrama
-lógico já normalizado, com possíveis justificativas}. O peso está nas
-justificativas da Seção~\ref{sec:justificativas}: o diagrama sozinho não
-sustenta a nota.}
+Este capítulo traduz o modelo conceitual do Capítulo~\ref{cap:conceitual} para
+o modelo relacional. A Seção~\ref{sec:diagrama-logico} apresenta o diagrama
+lógico e o que mudou na tradução, a Seção~\ref{sec:normalizacao} verifica a
+normalização e a Seção~\ref{sec:justificativas} desenvolve as decisões que o
+diagrama não explica sozinho.
 
 \section{DER lógico}\label{sec:diagrama-logico}
 
-\orientacao{Inserir o DER lógico exportado do ERD Tool do pgAdmin, com
-tabelas, chaves primárias, chaves estrangeiras e cardinalidades. Explicar no
-texto o que mudou em relação ao DER da Figura~\ref{fig:der} --- tabelas de
-junção, colunas de chave estrangeira, chaves compartilhadas --- e por quê,
-citando as regras de mapeamento aplicadas \citep{elmasri2019}.}
+A Figura~\ref{fig:logico} apresenta o modelo lógico da NextMedia, com as
+quatorze tabelas do esquema, suas chaves e as cardinalidades. Ela resulta de
+aplicar ao diagrama conceitual as regras de mapeamento para o relacional
+\citep{elmasri2019}. Cada entidade virou uma tabela, e os vínculos
+um-para-muitos foram absorvidos como chave estrangeira, como em \bd{assinatura},
+que guarda \bd{id\_conta} e \bd{id\_plano}. Só os relacionamentos
+muitos-para-muitos exigiram tabela própria, que são \bd{titulo\_genero} e
+\bd{participacao}, esta última carregando os atributos \bd{papel},
+\bd{personagem} e \bd{ordem\_credito}. Assim, as doze entidades do minimundo se
+tornaram quatorze tabelas.
 
-\begin{figure}[ht]
-\centering
-% \includegraphics[width=\textwidth]{logico-nextmedia.png}
-\fbox{\parbox[c][0.28\textheight][c]{0.9\textwidth}{\centering\itshape
-Espaço reservado para o DER lógico da NextMedia\\[2mm]
-\small (exportar para \bd{images/logico-nextmedia.png})}}
-\caption{DER lógico normalizado da NextMedia.}
-\label{fig:logico}
+Três construções mereceram tradução menos direta e reaparecem na
+Seção~\ref{sec:justificativas}. A especialização de \bd{titulo} virou um trio
+de tabelas em que \bd{filme} e \bd{serie} compartilham a chave primária do
+supertipo. As entidades fracas \bd{temporada} e \bd{episodio} receberam na
+chave a chave da entidade de que dependem, chegando à tripla
+\mbox{(\bd{id\_serie}, \bd{num\_temporada}, \bd{num\_episodio})} no episódio. E
+os dois auto-relacionamentos, a hierarquia de gêneros e a cadeia de franquias,
+viraram chaves estrangeiras da tabela para ela mesma, em
+\bd{genero.id\_genero\_pai} e \bd{titulo.id\_titulo\_origem}, opcionais e nulas
+na raiz.
+
+% O diagrama e panoramico (relacao ~2,6:1). Numa pagina retrato o texto das
+% tabelas ficaria ilegivel, entao ele ocupa uma pagina propria em paisagem.
+% A figura e um PDF vetorial (nitido em qualquer zoom); para trocar por uma
+% nova versao, basta sobrescrever images/DER-logico.pdf.
+\begin{landscape}
+\begin{figure}[p]
+    \centering
+    \includegraphics[width=\linewidth,height=0.92\textheight,keepaspectratio]{images/DER-logico.pdf}
+    \caption{DER lógico normalizado da NextMedia.}
+    \label{fig:logico}
 \end{figure}
+\end{landscape}
 
 \section{Normalização}\label{sec:normalizacao}
 
-\orientacao{Demonstrar que o esquema está na Terceira Forma Normal, em prosa,
-sem transcrever a teoria.
+O esquema está na terceira forma normal. A \emph{primeira forma normal} pede
+atributos atômicos, e vale por construção, pois a informação naturalmente
+multivalorada, como os vários gêneros de um título, virou linhas de
+\bd{titulo\_genero} e \bd{participacao} em vez de listas numa coluna.
 
-1FN: ausência de atributos multivalorados e compostos. Mostrar que os gêneros
-de um título e as participações de uma pessoa viraram linhas de
-\bd{titulo\_genero} e \bd{participacao}, não colunas com lista.
+A \emph{segunda forma normal} só importa nas chaves compostas, e o caso que
+rende é \bd{participacao}. Seus atributos \bd{personagem} e \bd{ordem\_credito}
+dependem da tripla inteira \mbox{(\bd{id\_titulo}, \bd{id\_pessoa},
+\bd{papel})}, e é isso que permite a mesma pessoa dirigir e atuar no mesmo
+título, em duas linhas que só diferem no \bd{papel}. Tirar \bd{papel} da chave
+colapsaria as duas e a forma normal se perderia.
 
-2FN: só precisa ser verificada onde a chave é composta, o que restringe a
-análise a \bd{titulo\_genero}, \bd{temporada}, \bd{episodio} e
-\bd{participacao}. O caso que rende é o último: \bd{personagem} e
-\bd{ordem\_credito} dependem da tripla inteira \mbox{(\bd{id\_titulo},
-\bd{id\_pessoa}, \bd{papel})}, não de parte dela, e é isso que permite a mesma
-pessoa dirigir e atuar no mesmo título.
-
-3FN: ausência de dependências transitivas. A suspeita é \bd{assinatura}, e a
-Seção~\ref{sec:valor-cobrado} responde. Mencionar também que os atributos
-deriváveis por agregação ficaram de fora, como um total de temporadas em
-\bd{serie}, para não criar redundância sujeita a inconsistência.
-
-Fechar declarando a forma normal atingida e a desnormalização consciente: a
-coluna \bd{tipo} se repete em \bd{titulo}, \bd{filme} e \bd{serie}.}
+A \emph{terceira forma normal} proíbe dependências transitivas. A única
+suspeita é \bd{valor\_cobrado} em \bd{assinatura}, tratada na
+Seção~\ref{sec:valor-cobrado}, que mostra ser dado histórico e não derivado do
+plano. Também deixamos de fora atributos deriváveis por agregação, como um
+total de temporadas em \bd{serie}, para não guardar um número que uma contagem
+já fornece. A única redundância consciente é a coluna \bd{tipo}, repetida em
+\bd{titulo}, \bd{filme} e \bd{serie}, cuja razão a Seção~\ref{sec:especializacao}
+explica.
 
 \section{Justificativas das decisões}\label{sec:justificativas}
 
-\orientacao{Núcleo do capítulo e onde a nota se decide. Cada subseção precisa
-desenvolver o argumento em prosa: problema, alternativas, escolha, custo
-assumido. Não basta listar.}
+As decisões a seguir não se leem no diagrama, mas o sustentam. Cada uma parte
+de um problema de mapeamento, pesa as alternativas e assume um custo.
 
 \subsection{Mapeamento da especialização \bd{titulo}}\label{sec:especializacao}
 
-\orientacao{Apresentar as três estratégias clássicas: (a) tabela única com
-atributo discriminador; (b) uma tabela por subtipo, sem supertipo;
-(c) supertipo mais subtipos compartilhando a chave primária. Justificar a
-escolha de (c): evita a proliferação de colunas nulas de (a) e mantém simples
-as consultas sobre ``todos os títulos'', que (b) obrigaria a resolver por
-\bd{UNION} e deixaria sem destino as chaves estrangeiras de
-\bd{titulo\_genero} e \bd{participacao}. Declarar o custo: uma junção
-adicional para montar a visão completa de um filme ou série.
+A especialização total e exclusiva de \bd{titulo} (RN06) admite três traduções
+clássicas para o relacional \citep{elmasri2019}. A \emph{tabela única} deixa
+metade das colunas nulas em cada linha, já que filme não tem
+\bd{ano\_encerramento} e série não tem \bd{duracao\_min}. Uma \emph{tabela por
+subtipo sem supertipo} elimina os nulos, mas deixa sem alvo as chaves
+estrangeiras que apontam para um título qualquer, como as de \bd{titulo\_genero}
+e \bd{participacao}, e obrigaria toda consulta sobre todos os títulos a uma
+\bd{UNION}. Escolhemos a terceira opção, um \emph{supertipo} \bd{titulo} com os
+atributos comuns e dois \emph{subtipos} que compartilham sua chave primária, ao
+custo de uma junção para montar a visão completa de um título.
 
-Explicar que a chave compartilhada sozinha não garante a RN06, porque nada
-nela impede o mesmo \bd{id\_titulo} em \bd{filme} e em \bd{serie}. Foi preciso
-trazer o discriminador do diagrama para o esquema, como a coluna
-\bd{titulo.tipo}, e fazer os subtipos referenciarem
-\mbox{(\bd{id\_titulo}, \bd{tipo})} numa chave estrangeira composta. É essa a
-desnormalização declarada na Seção~\ref{sec:normalizacao}. A totalidade
-continua fora do alcance declarativo e fica com o gatilho do
-Capítulo~\ref{cap:fisico}.}
+A chave compartilhada não garante a exclusividade sozinha, pois nada impede o
+mesmo \bd{id\_titulo} em \bd{filme} e em \bd{serie}. Para o banco verificar a
+RN06, a coluna \bd{titulo.tipo} entra como discriminador e cada subtipo
+referencia o par \mbox{(\bd{id\_titulo}, \bd{tipo})}, de modo que um título
+marcado como série não encontra par em \bd{filme}. Essa é a repetição de
+\bd{tipo} declarada como desnormalização consciente. A totalidade da RN06
+continua fora do alcance declarativo e fica com um gatilho no
+Capítulo~\ref{cap:fisico}.
 
 \subsection{\bd{valor\_cobrado} em \bd{assinatura}}\label{sec:valor-cobrado}
 
-\orientacao{Antecipar a objeção: à primeira vista \bd{valor\_cobrado} duplica
-\bd{plano.preco\_mensal} e violaria a normalização. Argumentar que não --- o
-preço do plano muda ao longo do tempo e as cobranças já realizadas precisam
-permanecer corretas. É dado histórico, funcionalmente dependente da
-assinatura e não do plano. Sem essa explicação explícita, a decisão é lida
-como erro.}
+O \bd{valor\_cobrado} em \bd{assinatura} parece duplicar
+\bd{plano.preco\_mensal}, mas a diferença é temporal. O preço do plano muda com
+o tempo, e uma cobrança já feita precisa manter o valor da época, senão um
+reajuste do Premium alteraria as cobranças passadas. O \bd{valor\_cobrado} é
+dado histórico, dependente da assinatura e não do plano, pois
+\bd{plano.preco\_mensal} guarda o preço vigente e \bd{valor\_cobrado} guarda o
+preço praticado. Não há, portanto, dependência transitiva.
 
 % ============================================================================
 \chapter{Modelo Físico}\label{cap:fisico}
